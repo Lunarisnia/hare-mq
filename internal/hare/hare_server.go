@@ -7,8 +7,9 @@ import (
 )
 
 type HareServer interface {
-	Serve(address string)
+	Serve(tcpAddr *net.TCPAddr)
 	Ping()
+	ReadMessage()
 }
 
 type HareServerImpl struct {
@@ -21,12 +22,13 @@ func NewHareServer() HareServer {
 	}
 }
 
-func (h *HareServerImpl) Serve(address string) {
-	listener, err := net.Listen("udp", address)
+func (h *HareServerImpl) Serve(tcpAddr *net.TCPAddr) {
+	listener, err := net.ListenTCP("tcp", tcpAddr)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("Listening on: ", address)
+	defer listener.Close()
+	fmt.Printf("Listening on: %v:%v\n", tcpAddr.IP, tcpAddr.Port)
 
 	for {
 		conn, err := listener.Accept()
@@ -42,8 +44,21 @@ func (h *HareServerImpl) Ping() {
 	for _, c := range h.connectedClients {
 		_, err := io.WriteString(c, "Ping")
 		if err != nil {
-			panic(err)
+			c.Close()
 		}
 		fmt.Println("Pinged: ", c.RemoteAddr().String())
+	}
+}
+
+func (h *HareServerImpl) ReadMessage() {
+	body := make([]byte, 32)
+	for _, c := range h.connectedClients {
+		_, err := c.Read(body)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("%v say: %v\n", c.RemoteAddr().String(), string(body))
+		fmt.Fprint(c, "Pong")
 	}
 }

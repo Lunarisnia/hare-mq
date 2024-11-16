@@ -1,8 +1,20 @@
 package main
 
-import "github.com/Lunarisnia/hare-mq.git/internal/hare"
+import (
+	"net"
+	"time"
+
+	"github.com/Lunarisnia/hare-mq.git/internal/hare"
+)
 
 func main() {
 	hareServer := hare.NewHareServer()
-	hareServer.Serve("0.0.0.0:3000")
+	go hareServer.Serve(&net.TCPAddr{
+		IP:   net.ParseIP("127.0.0.1"),
+		Port: 3000,
+	})
+	for {
+		time.Sleep(2 * time.Second)
+		hareServer.Ping()
+	}
 }
